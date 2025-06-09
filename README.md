@@ -1,6 +1,7 @@
 
 O projeto está organizado da seguinte forma:
-
+```
+.
 ├── Makefile
 ├── README.md
 ├── bin # diretório de todos os arquivos executáveis gerados
@@ -27,4 +28,4 @@ O projeto está organizado da seguinte forma:
     ├── border_detection.c
     ├── convolution.c
     └── image.c
-
+```
