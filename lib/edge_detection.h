@@ -1,5 +1,7 @@
-#ifndef BORDER_DETECTION_H
-#define BORDER_DETECTION_H
+#ifndef EDGE_DETECTION_H
+#define EDGE_DETECTION_H
+
+#include <stdint.h>
 
 uint8_t** sobel(uint8_t** image, int width, int height);
 uint8_t** sobel_expanded(uint8_t** image, int width, int height);
