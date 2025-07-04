@@ -1,8 +1,0 @@
-#!/bin/bash
-
-gcc lib/matrix.h src/matrix.c tests/matrix.c -o bin/matrix -lm 
-
-gcc lib/matrix.h src/matrix.c tests/accumulator.c -o bin/accumulator -lm
-
-gcc lib/*.h src/*.c tests/image.c  -lm -o bin/image
-
