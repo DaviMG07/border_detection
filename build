@@ -1,8 +1,5 @@
 #!/bin/bash
 
-gcc lib/matrix.h src/matrix.c tests/matrix.c -o bin/matrix -lm 
+gcc lib/* src/* tests/image.c  -o bin/image  -lm --std=c99 -DCOPROCESSOR
 
-gcc lib/matrix.h src/matrix.c tests/accumulator.c -o bin/accumulator -lm
-
-gcc lib/*.h src/*.c tests/image.c  -lm -o bin/image
-
+gcc lib/* src/* tests/image.c  -o bin/image_hps  -lm --std=c99

@@ -1,9 +1,8 @@
-#include <stdio.h>
-#include "../lib/image.h"
+#include "../lib/includes.h"
 
+// Testa a inversão de cores de uma imagem.
 void test_image() {
     Image* image = get_image("media/tilapia.jpg");
-    // Inverte as cores da imagem
     for (int i = 0; i < image->height; i++) {
         for (int j = 0; j < image->width; j++) {
             for (int c = 0; c < 3; c++) {
@@ -15,6 +14,7 @@ void test_image() {
     free_image(image);
 }
 
+// Testa os algoritmos de detecção de borda.
 void test_edge_detection_image() {
     Image* image_ptr = get_image("media/tilapia.jpg");
     Image image = *image_ptr;
@@ -28,15 +28,10 @@ void test_edge_detection_image() {
 
     printf("Salvando imagens com filtros de detecção de borda...\n");
 
-    save_image("media/sobel.jpg", *sobel, 1);
     save_image("media/sobel_gray.jpg", *sobel, 0);
-    save_image("media/sobel_expanded.jpg", *sobel_expanded, 1);
     save_image("media/sobel_expanded_gray.jpg", *sobel_expanded, 0);
-    save_image("media/prewitt.jpg", *prewitt, 1);
     save_image("media/prewitt_gray.jpg", *prewitt, 0);
-    save_image("media/roberts.jpg", *roberts, 1); // CORRIGIDO
-    save_image("media/roberts_gray.jpg", *roberts, 0); // CORRIGIDO
-    save_image("media/laplace.jpg", *laplace, 1);
+    save_image("media/roberts_gray.jpg", *roberts, 0);
     save_image("media/laplace_gray.jpg", *laplace, 0);
 
     printf("Imagens salvas com sucesso.\n");
@@ -48,6 +43,7 @@ void test_edge_detection_image() {
     free_image(laplace);
 }
 
+// Função principal que executa os testes.
 int main() {
     printf("Executando teste de inversão de imagem...\n");
     test_image();
@@ -56,6 +52,5 @@ int main() {
     printf("Executando testes de detecção de borda...\n");
     test_edge_detection_image();
     printf("Testes de detecção de borda finalizados.\n");
-
     return 0;
 }

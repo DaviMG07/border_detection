@@ -1,9 +1,6 @@
-#include "../lib/matrix.h"
-#include <stdio.h>
-#include <stdlib.h>
-#include <math.h>
+#include "../lib/includes.h"
 
-// Função para criar e alocar uma nova matriz
+// Cria e aloca uma nova matriz.
 Matrix* new_matrix(int width, int height) {
   Matrix* matrix = malloc(sizeof(Matrix));
   if (matrix == NULL) return NULL;
@@ -29,7 +26,7 @@ Matrix* new_matrix(int width, int height) {
   return matrix;
 }
 
-// Função para liberar a memória de uma matriz
+// Libera a memória de uma matriz.
 void free_matrix(Matrix* matrix) {
   if (matrix == NULL) return;
   if (matrix->self == NULL) return;
@@ -44,7 +41,7 @@ void free_matrix(Matrix* matrix) {
   matrix = NULL;
 }
 
-// Função para imprimir a matriz no console
+// Imprime a matriz no console.
 void print_matrix(Matrix matrix) {
   printf("printing matrix...\n");
   for (int i = 0; i < matrix.height; i++) {
@@ -56,9 +53,9 @@ void print_matrix(Matrix matrix) {
   printf("done.\n");
 }
 
-// Produto de Hadamard (multiplicação elemento a elemento)
+// Realiza o produto de Hadamard (multiplicação elemento a elemento).
 Matrix* hadamard(Matrix a, Matrix b) {
-  Matrix* result = new_matrix(a.width, a.height); // Correção: altura de 'a'
+  Matrix* result = new_matrix(a.width, a.height);
   for (int i = 0; i < a.height; i++) {
     for (int j = 0; j < a.width; j++) {
       result->self[i][j] = a.self[i][j] * b.self[i][j];
@@ -67,7 +64,7 @@ Matrix* hadamard(Matrix a, Matrix b) {
   return result;
 }
 
-// Copia um array 2D estático para uma estrutura Matrix
+// Copia um array 2D estático para uma estrutura Matrix.
 Matrix* copy_reference(int ref[5][5]) {
   Matrix* matrix = new_matrix(5, 5);
   for (int i = 0; i < 5; i++) {
@@ -78,7 +75,7 @@ Matrix* copy_reference(int ref[5][5]) {
   return matrix;
 }
 
-// Soma todos os elementos de uma matriz
+// Soma todos os elementos de uma matriz.
 int sum(Matrix matrix) {
   int result = 0;
   for (int i = 0; i < matrix.height; i++) {
@@ -89,7 +86,7 @@ int sum(Matrix matrix) {
   return result;
 }
 
-// Extrai uma janela 5x5 da matriz com tratamento de bordas
+// Extrai uma janela 5x5 da matriz com tratamento de bordas.
 Matrix* get_window(Matrix matrix, int x, int y) {
   Matrix* window = new_matrix(5, 5);
   int index_x[5];
@@ -104,7 +101,6 @@ Matrix* get_window(Matrix matrix, int x, int y) {
 
   for (int i = 0; i < 5; i++) {
     for (int j = 0; j < 5; j++) {
-        // Correção no acesso: a matriz original é [linha][coluna] -> [y][x]
         window->self[j][i] = matrix.self[index_y[j]][index_x[i]];
     }
   }
@@ -112,19 +108,21 @@ Matrix* get_window(Matrix matrix, int x, int y) {
 }
 
 
-// Realiza a operação de convolução
+// Realiza a operação de convolução.
+#ifndef COPROCESSOR
+
 Matrix* convolution(Matrix matrix, Matrix mask) {
+  printf("using hps\n");
   int result;
   Matrix* window;
   Matrix* temp;
   Matrix* convolved = new_matrix(matrix.width, matrix.height);
   for (int i = 0; i < matrix.height; i++) {
     for (int j = 0; j < matrix.width; j++) {
-        // Correção: get_window usa (coluna, linha) -> (j, i)
         window = get_window(matrix, j, i);
         temp   = hadamard(*window, mask);
         result = sum(*temp);
-        convolved->self[i][j] = result > 255 ? 255 : result < 0 ? 0 : result;
+        convolved->self[i][j] = result;
         free_matrix(window);
         free_matrix(temp);
     }
@@ -132,19 +130,49 @@ Matrix* convolution(Matrix matrix, Matrix mask) {
   return convolved;
 }
 
+#else
 
-// Transpõe uma matriz
+Matrix* convolution(Matrix matrix, Matrix mask) {
+  Mpu* mpu = init_mpu();
+  printf("using fpga\n");
+  int result;
+  Matrix* window;
+  Matrix* temp;
+  Matrix* convolved = new_matrix(matrix.width, matrix.height);
+  printf("yep, I could send\n");
+  for (int i = 0; i < matrix.height; i++) {
+    for (int j = 0; j < matrix.width; j++) {
+      window = get_window(matrix, j, i);
+      send_matrix(0, *window, mpu);
+      send_matrix(1, mask, mpu);
+      conv(mpu);
+      result = get_value(0, 0, mpu);
+      if (get_value(0, 1, mpu)) {
+         result = 0;~((-1) ^ result);
+      }
+      *(mpu->data_in) = 7;
+      convolved->self[i][j] = result;
+      free_matrix(window);
+    }
+  }
+  cleanup_mpu(mpu);
+  return convolved;
+}
+#endif
+
+
+// Transpõe uma matriz.
 Matrix* transpose(Matrix matrix) {
   Matrix* result = new_matrix(matrix.height, matrix.width);
   for (int i = 0; i < matrix.height; i++) {
     for (int j = 0; j < matrix.width; j++) {
-      result->self[j][i] = matrix.self[i][j]; // Correção: indices invertidos para transposição
+      result->self[j][i] = matrix.self[i][j];
     }
   }
   return result;
 }
 
-// Detecção de bordas genérica usando gradiente
+// Detecção de bordas genérica usando gradiente.
 Matrix* generic_edge_detection(Matrix matrix, Matrix mask) {
   Matrix* t_mask     = transpose(mask);
   Matrix* horizontal = convolution(matrix, mask);
@@ -155,7 +183,7 @@ Matrix* generic_edge_detection(Matrix matrix, Matrix mask) {
   for (int i = 0; i < matrix.height; i++) {
     for (int j = 0; j < matrix.width; j++) {
       magnitude = (int)sqrt(pow((double)horizontal->self[i][j], 2.0) + pow((double)vertical->self[i][j], 2.0));
-      edge->self[i][j] = magnitude > 255 ? 255 : magnitude;
+      edge->self[i][j] = magnitude > 255 ? 255 : magnitude < 0 ? 0 : magnitude;
     }
   }
   free_matrix(t_mask);
@@ -164,7 +192,7 @@ Matrix* generic_edge_detection(Matrix matrix, Matrix mask) {
   return edge;
 }
 
-// Operador de Sobel
+// Aplica o operador de Sobel.
 Matrix* sobel(Matrix matrix) {
   Matrix* mask;
   Matrix* result;
@@ -181,7 +209,7 @@ Matrix* sobel(Matrix matrix) {
   return result;
 }
 
-// Operador de Sobel expandido
+// Aplica o operador de Sobel expandido.
 Matrix* sobel_expanded(Matrix matrix) {
   Matrix* mask;
   Matrix* result;
@@ -198,7 +226,7 @@ Matrix* sobel_expanded(Matrix matrix) {
   return result;
 }
 
-// Operador de Prewitt
+// Aplica o operador de Prewitt.
 Matrix* prewitt(Matrix matrix) {
   Matrix* mask;
   Matrix* result;
@@ -215,7 +243,7 @@ Matrix* prewitt(Matrix matrix) {
   return result;
 }
 
-// Operador de Roberts Cross
+// Aplica o operador de Roberts Cross.
 Matrix* roberts(Matrix matrix) {
   int result;
   int roberts_gx[5][5] = {
@@ -251,7 +279,7 @@ Matrix* roberts(Matrix matrix) {
   return edge;
 }
 
-// Operador de Laplace
+// Aplica o operador de Laplace.
 Matrix* laplace(Matrix matrix) {
   Matrix* mask;
   Matrix* result;
@@ -264,6 +292,13 @@ Matrix* laplace(Matrix matrix) {
   };
   mask   = copy_reference(ref);
   result = convolution(matrix, *mask);
+  for (int i = 0; i < matrix.height; i++) {
+    for (int j = 0; j < matrix.width; j++) {
+      result->self[i][j] = result->self[i][j] > 255 ? 255 :
+                           result->self[i][j] < 0   ? 0   : 
+                           result->self[i][j];
+    }
+  }
   free_matrix(mask);
   return result;
 }
