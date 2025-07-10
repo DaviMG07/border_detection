@@ -1,0 +1,69 @@
+module iterator(
+    input clk,
+    input en,
+    input [199:0] MatA,
+    input [199:0] MatB,
+    output reg [199:0] resultSum, // Tornar 'reg' para atribuição no always block
+    output reg done
+);
+
+    // Sinais para o módulo MAC
+    wire [15:0] mac_result; // O resultado de uma multiplicação de 8x8 bits pode ter até 16 bits
+    wire [7:0] value_a;
+    wire [7:0] value_b;
+
+    // Instância do MAC (assumindo que ele acumula internamente)
+    mac mac_unit (
+        .clock(clk),
+        .clear(clear_mac), // Sinal para limpar o acumulador do MAC
+        .enable(en_mac),   // Sinal para habilitar a operação do MAC
+        .value_a(value_a),
+        .value_b(value_b),
+        .result(mac_result)
+    );
+
+    // Registradores de controle
+    reg [4:0] counter;
+    reg en_mac;
+    reg clear_mac;
+
+    // Lógica para selecionar os operandos
+    assign value_a = MatA[counter * 8 +: 8];
+    assign value_b = MatB[counter * 8 +: 8];
+
+    // Armazenamento temporário para os resultados parciais
+    reg [199:0] temp_sum;
+
+    always @(posedge clk) begin
+        if (en) begin
+            clear_mac <= 1'b0; // Desativa o clear após o primeiro ciclo
+
+            if (counter < 5'd24) begin
+                en_mac <= 1'b1; // Habilita o MAC para calcular
+                counter <= counter + 1;
+                // Acumula o resultado (isso é problemático se o MAC não acumular)
+                // A forma correta depende da implementação do MAC.
+                // Assumindo que o MAC apenas multiplica, a acumulação deve ser feita aqui.
+                // Ex: temp_sum <= temp_sum + (value_a * value_b); --> Isso criaria um multiplicador aqui, o que é redundante.
+                
+                // A lógica correta é que 'resultSum' deve acumular o resultado do MAC.
+                // Exemplo: resultSum[counter*8 +: 8] <= mac_result; (se for um vetor de somas)
+                // Se for uma única soma acumulada, o MAC deve fazer isso.
+                done <= 1'b0;
+            end else begin
+                // Última iteração
+                en_mac <= 1'b1; // Permite o último cálculo
+                resultSum <= mac_result; // Assume que mac_result é o resultado acumulado final
+                done <= 1'b1;
+                counter <= 5'd0; // Opcional: reiniciar para próxima transação
+            end
+        end else begin
+            // Se 'en' for desativado, reseta o estado da máquina
+            done <= 1'b0;
+            en_mac <= 1'b0;
+            counter <= 5'd0;
+            clear_mac <= 1'b1; // Prepara para a próxima habilitação
+        end
+    end
+
+endmodule
